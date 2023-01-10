@@ -77,7 +77,7 @@ void GenerateTetrimino(Tetrimino &tetrimino, int nextQueue[100]){
 	for(int i=0;i<99;i++){
 		nextQueue[i] = nextQueue[i+1];
 	}
-	//wanted to use switch, but cases cannot handle non-constant values 
+	//wanted to use switch, but cases cannot handle non-constant values
 	if(tetrimino.type == O){
 		tetrimino.mino[0].x = 5;tetrimino.mino[0].y = 22;
 		tetrimino.mino[1].x = 6;tetrimino.mino[1].y = 22;
@@ -182,44 +182,44 @@ void Softdrop(Tetrimino &tetrimino, int buffer[41][11], int &lock){
 	}
 	lock = 1;
 }
-void MoveRight(Tetrimino &tetrimino){
+void MoveRight(Tetrimino &tetrimino, int buffer[41][11]){
 	int check = 1;
 	for(int i=0;i<4;i++)
-		if(tetrimino.mino[i].x == 10)
+		if(tetrimino.mino[i].x == 10 || buffer[tetrimino.mino[i].y][tetrimino.mino[i].x+1] == 1)
 			check = 0;
 	if(check)
 		for(int i=0;i<4;i++)
 			tetrimino.mino[i].x++;
 }
-void MoveLeft(Tetrimino &tetrimino){
+void MoveLeft(Tetrimino &tetrimino, int buffer[41][11]){
 	int check = 1;
 	for(int i=0;i<4;i++)
-		if(tetrimino.mino[i].x == 1)
+		if(tetrimino.mino[i].x == 1 || buffer[tetrimino.mino[i].y][tetrimino.mino[i].x-1] == 1)
 			check = 0;
 	if(check)
 		for(int i=0;i<4;i++)
 			tetrimino.mino[i].x--;
 }
-void DASRight(Tetrimino &tetrimino, int &DASPrevRight, int DASdelta){
+void DASRight(Tetrimino &tetrimino, int buffer[41][11], int &DASPrevRight, int DASdelta){
 	if(!GetAsyncKeyState('F'))
 		DASPrevRight = clock();
 	else if(clock() - DASPrevRight > DASdelta){
 		int check = 1;
 		for(int i=0;i<4;i++)
-			if(tetrimino.mino[i].x == 10)
+			if(tetrimino.mino[i].x == 10 || buffer[tetrimino.mino[i].y][tetrimino.mino[i].x+1] == 1)
 				check = 0;
 		if(check)
 			for(int i=0;i<4;i++)
 				tetrimino.mino[i].x++;
 	}
 }
-void DASLeft(Tetrimino &tetrimino, int &DASPrevLeft, int DASdelta){
+void DASLeft(Tetrimino &tetrimino, int buffer[41][11], int &DASPrevLeft, int DASdelta){
 	if(!GetAsyncKeyState('S'))
 		DASPrevLeft = clock();
 	else if(clock() - DASPrevLeft > DASdelta){
 		int check = 1;
 		for(int i=0;i<4;i++)
-			if(tetrimino.mino[i].x == 1)
+			if(tetrimino.mino[i].x == 1 || buffer[tetrimino.mino[i].y][tetrimino.mino[i].x-1] == 1)
 				check = 0;
 		if(check)
 			for(int i=0;i<4;i++)
@@ -228,9 +228,11 @@ void DASLeft(Tetrimino &tetrimino, int &DASPrevLeft, int DASdelta){
 }
 bool Shift(Tetrimino &tetrimino, int buffer[41][11], Mino m[4], Mino offset){
 	for(int i=0;i<4;i++){
-		if(buffer[m[i].y+offset.y][m[i].x+offset.x] == 1)
+		if(buffer[m[i].y+offset.y][m[i].x+offset.x] == 1){
 			return 0;
+		}
 	}
+	cout << "here";
 	for(int i=0;i<4;i++)
 		tetrimino.mino[i] = m[i];
 	return 1;
@@ -240,9 +242,10 @@ void RotateRight(Tetrimino &tetrimino, int buffer[41][11]){
 	if(tetrimino.type = I){
 		if(tetrimino.facing == rN){
 			m[0].x = tetrimino.mino[0].x+1; m[0].y = tetrimino.mino[0].y+1;
-			m[1].x = tetrimino.mino[1].x+1; m[0].y = tetrimino.mino[1].y;
-			m[2].x = tetrimino.mino[2].x+1; m[0].y = tetrimino.mino[2].y-1;
-			m[3].x = tetrimino.mino[3].x+1; m[0].y = tetrimino.mino[3].y-2;
+			m[1].x = tetrimino.mino[1].x+1; m[1].y = tetrimino.mino[1].y;
+			m[2].x = tetrimino.mino[2].x+1; m[2].y = tetrimino.mino[2].y-1;
+			m[3].x = tetrimino.mino[3].x+1; m[3].y = tetrimino.mino[3].y-2;
+            //cout << "here";
 			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rE;
 			else if(Shift(tetrimino, buffer, m, {-2,  0})) tetrimino.facing = rE;
 			else if(Shift(tetrimino, buffer, m, { 1,  0})) tetrimino.facing = rE;
@@ -251,9 +254,9 @@ void RotateRight(Tetrimino &tetrimino, int buffer[41][11]){
 		}
 		else if(tetrimino.facing == rE){
 			m[0].x = tetrimino.mino[0].x-2; m[0].y = tetrimino.mino[0].y-2;
-			m[1].x = tetrimino.mino[1].x-1; m[0].y = tetrimino.mino[1].y-1;
-			m[2].x = tetrimino.mino[2].x  ; m[0].y = tetrimino.mino[2].y;
-			m[3].x = tetrimino.mino[3].x+1; m[0].y = tetrimino.mino[3].y+1;
+			m[1].x = tetrimino.mino[1].x-1; m[1].y = tetrimino.mino[1].y-1;
+			m[2].x = tetrimino.mino[2].x  ; m[2].y = tetrimino.mino[2].y;
+			m[3].x = tetrimino.mino[3].x+1; m[3].y = tetrimino.mino[3].y+1;
 			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rS;
 			else if(Shift(tetrimino, buffer, m, {-1,  0})) tetrimino.facing = rS;
 			else if(Shift(tetrimino, buffer, m, { 2,  0})) tetrimino.facing = rS;
@@ -262,9 +265,9 @@ void RotateRight(Tetrimino &tetrimino, int buffer[41][11]){
 		}
 		else if(tetrimino.facing == rS){
 			m[0].x = tetrimino.mino[0].x+1; m[0].y = tetrimino.mino[0].y+2;
-			m[1].x = tetrimino.mino[1].x  ; m[0].y = tetrimino.mino[1].y+1;
-			m[2].x = tetrimino.mino[2].x-1; m[0].y = tetrimino.mino[2].y;
-			m[3].x = tetrimino.mino[3].x-2; m[0].y = tetrimino.mino[3].y-1;
+			m[1].x = tetrimino.mino[1].x  ; m[1].y = tetrimino.mino[1].y+1;
+			m[2].x = tetrimino.mino[2].x-1; m[2].y = tetrimino.mino[2].y;
+			m[3].x = tetrimino.mino[3].x-2; m[3].y = tetrimino.mino[3].y-1;
 			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rW;
 			else if(Shift(tetrimino, buffer, m, { 2,  0})) tetrimino.facing = rW;
 			else if(Shift(tetrimino, buffer, m, {-1,  0})) tetrimino.facing = rW;
@@ -273,9 +276,9 @@ void RotateRight(Tetrimino &tetrimino, int buffer[41][11]){
 		}
 		else if(tetrimino.facing == rW){
 			m[0].x = tetrimino.mino[0].x-1; m[0].y = tetrimino.mino[0].y-1;
-			m[1].x = tetrimino.mino[1].x  ; m[0].y = tetrimino.mino[1].y;
-			m[2].x = tetrimino.mino[2].x+1; m[0].y = tetrimino.mino[2].y+1;
-			m[3].x = tetrimino.mino[3].x+2; m[0].y = tetrimino.mino[3].y+2;
+			m[1].x = tetrimino.mino[1].x  ; m[1].y = tetrimino.mino[1].y;
+			m[2].x = tetrimino.mino[2].x+1; m[2].y = tetrimino.mino[2].y+1;
+			m[3].x = tetrimino.mino[3].x+2; m[3].y = tetrimino.mino[3].y+2;
 			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rN;
 			else if(Shift(tetrimino, buffer, m, { 1,  0})) tetrimino.facing = rN;
 			else if(Shift(tetrimino, buffer, m, {-2,  0})) tetrimino.facing = rN;
@@ -314,16 +317,16 @@ int main(int argc, char ** argv){
 					else if(ch == 'd')
 						Softdrop(tetrimino, buffer, lock);
 					else if(ch == 'f')
-						MoveRight(tetrimino);
+						MoveRight(tetrimino, buffer);
 					else if(ch == 's')
-						MoveLeft(tetrimino);
-					else if(ch = 'j')
+						MoveLeft(tetrimino, buffer);
+					else if(ch == 'k')
 						RotateRight(tetrimino, buffer);
 					// RotateTetrimino();
 					//NOTE: Might use GetAsyncKeyState only for das, and getch for anything else
 			}
-			DASRight(tetrimino, DASPrevRight, DASdelta);
-			DASLeft(tetrimino, DASPrevLeft, DASdelta);
+			DASRight(tetrimino, buffer, DASPrevRight, DASdelta);
+			DASLeft(tetrimino, buffer, DASPrevLeft, DASdelta);
 			RefreshScreen(buffer, prevbuffer, tetrimino, prevtetrimino);
 		}
 		for(int i=0;i<4;i++){
