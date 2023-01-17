@@ -21,11 +21,14 @@ int O = 1,
     J = 5,
     S = 6,
     Z = 7;
-int DISPLAY_HEIGHT = 40;
+int DISPLAY_HEIGHT = 22;
+int PADDING_TOP = 5;
+int PADDING_LEFT = 20;
 int rN = 0,
     rE = 1,
     rS = 2,
     rW = 3;
+int USING_HOLD = 1;
 //Required variables
 HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
 DWORD extra;
@@ -40,11 +43,14 @@ struct Tetrimino{
 	int facing;
 }tetrimino, prevtetrimino;
 int nextQueue[100];
+int holdQueue;
 int lose, lock;
 int delta = 500;
 int DASdelta = 133;
 int DASPrevRight;
 int DASPrevLeft;
+int hold_check;
+int linesCleared[40];
 //Functions
 void ShuffleTetriminos(int nextQueue[100], int a, int b){
 	int r1, r2;
@@ -72,9 +78,21 @@ void GenerateBag(int nextQueue[100]){
 		ShuffleTetriminos(nextQueue, 7, 13);
 	}
 }
-void GenerateTetrimino(Tetrimino &tetrimino, int nextQueue[100]){
-	tetrimino.type = nextQueue[0];
-	for(int i=0;i<99;i++){
+void GenerateTetrimino(Tetrimino &tetrimino, int nextQueue[100], int &holdQueue, int isHold = 0){
+	if(isHold){
+		if(holdQueue == 0){
+			holdQueue = tetrimino.type;
+			GenerateTetrimino(tetrimino, nextQueue, holdQueue);
+		}
+		else{
+			int aux = tetrimino.type;
+			tetrimino.type = holdQueue;
+			holdQueue = aux;
+		}
+	}
+	else tetrimino.type = nextQueue[0];
+	tetrimino.facing = rN;
+	if(isHold == 0) for(int i=0;i<99;i++){
 		nextQueue[i] = nextQueue[i+1];
 	}
 	//wanted to use switch, but cases cannot handle non-constant values
@@ -121,6 +139,68 @@ void GenerateTetrimino(Tetrimino &tetrimino, int nextQueue[100]){
 		tetrimino.mino[3].x = 6;tetrimino.mino[3].y = 21;
 	}
 }
+void DisplayNextQueue(int nextQueue[100]){
+	for(int i=0;i<5;i++){
+		if(nextQueue[i] == O){
+			WriteConsoleOutputCharacter(h, "[][]    ", 8, {15*2 + PADDING_LEFT, (3*i)+5 + PADDING_TOP}, &extra);
+			WriteConsoleOutputCharacter(h, "[][]    ", 8, {15*2 + PADDING_LEFT, (3*i)+6 + PADDING_TOP}, &extra);
+		}
+		else if(nextQueue[i] == I){
+			WriteConsoleOutputCharacter(h, "        ", 8, {15*2 + PADDING_LEFT, (3*i)+5 + PADDING_TOP}, &extra);
+			WriteConsoleOutputCharacter(h, "[][][][]", 8, {15*2 + PADDING_LEFT, (3*i)+6 + PADDING_TOP}, &extra);
+		}
+		else if(nextQueue[i] == T){
+			WriteConsoleOutputCharacter(h, "  []    ", 8, {15*2 + PADDING_LEFT, (3*i)+5 + PADDING_TOP}, &extra);
+			WriteConsoleOutputCharacter(h, "[][][]  ", 8, {15*2 + PADDING_LEFT, (3*i)+6 + PADDING_TOP}, &extra);
+		}
+		else if(nextQueue[i] == L){
+			WriteConsoleOutputCharacter(h, "    []  ", 8, {15*2 + PADDING_LEFT, (3*i)+5 + PADDING_TOP}, &extra);
+			WriteConsoleOutputCharacter(h, "[][][]  ", 8, {15*2 + PADDING_LEFT, (3*i)+6 + PADDING_TOP}, &extra);
+		}
+		else if(nextQueue[i] == J){
+			WriteConsoleOutputCharacter(h, "[]      ", 8, {15*2 + PADDING_LEFT, (3*i)+5 + PADDING_TOP}, &extra);
+			WriteConsoleOutputCharacter(h, "[][][]  ", 8, {15*2 + PADDING_LEFT, (3*i)+6 + PADDING_TOP}, &extra);
+		}
+		else if(nextQueue[i] == S){
+			WriteConsoleOutputCharacter(h, "  [][]  ", 8, {15*2 + PADDING_LEFT, (3*i)+5 + PADDING_TOP}, &extra);
+			WriteConsoleOutputCharacter(h, "[][]    ", 8, {15*2 + PADDING_LEFT, (3*i)+6 + PADDING_TOP}, &extra);
+		}
+		else if(nextQueue[i] == Z){
+			WriteConsoleOutputCharacter(h, "[][]    ", 8, {15*2 + PADDING_LEFT, (3*i)+5 + PADDING_TOP}, &extra);
+			WriteConsoleOutputCharacter(h, "  [][]  ", 8, {15*2 + PADDING_LEFT, (3*i)+6 + PADDING_TOP}, &extra);
+		}
+	}
+}
+void DisplayHoldQueue(int &holdQueue){
+	if(holdQueue == O){
+		WriteConsoleOutputCharacter(h, "[][]    ", 8, {-9 + PADDING_LEFT, 5 + PADDING_TOP}, &extra);
+		WriteConsoleOutputCharacter(h, "[][]    ", 8, {-9 + PADDING_LEFT, 6 + PADDING_TOP}, &extra);
+	}
+	else if(holdQueue == I){
+		WriteConsoleOutputCharacter(h, "        ", 8, {-9 + PADDING_LEFT, 5 + PADDING_TOP}, &extra);
+		WriteConsoleOutputCharacter(h, "[][][][]", 8, {-9 + PADDING_LEFT, 6 + PADDING_TOP}, &extra);
+	}
+	else if(holdQueue == T){
+		WriteConsoleOutputCharacter(h, "  []    ", 8, {-9 + PADDING_LEFT, 5 + PADDING_TOP}, &extra);
+		WriteConsoleOutputCharacter(h, "[][][]  ", 8, {-9 + PADDING_LEFT, 6 + PADDING_TOP}, &extra);
+	}
+	else if(holdQueue == L){
+		WriteConsoleOutputCharacter(h, "    []  ", 8, {-9 + PADDING_LEFT, 5 + PADDING_TOP}, &extra);
+		WriteConsoleOutputCharacter(h, "[][][]  ", 8, {-9 + PADDING_LEFT, 6 + PADDING_TOP}, &extra);
+	}
+	else if(holdQueue == J){
+		WriteConsoleOutputCharacter(h, "[]      ", 8, {-9 + PADDING_LEFT, 5 + PADDING_TOP}, &extra);
+		WriteConsoleOutputCharacter(h, "[][][]  ", 8, {-9 + PADDING_LEFT, 6 + PADDING_TOP}, &extra);
+	}
+	else if(holdQueue == S){
+		WriteConsoleOutputCharacter(h, "  [][]  ", 8, {-9 + PADDING_LEFT, 5 + PADDING_TOP}, &extra);
+		WriteConsoleOutputCharacter(h, "[][]    ", 8, {-9 + PADDING_LEFT, 6 + PADDING_TOP}, &extra);
+	}
+	else if(holdQueue == Z){
+		WriteConsoleOutputCharacter(h, "[][]    ", 8, {-9 + PADDING_LEFT, 5 + PADDING_TOP}, &extra);
+		WriteConsoleOutputCharacter(h, "  [][]  ", 8, {-9 + PADDING_LEFT, 6 + PADDING_TOP}, &extra);
+	}
+}
 void FallTetrimino(Tetrimino &tetrimino, int buffer[41][11], int delta, int &previous, int &lock){
 	if(clock()-previous > delta){
 		previous = clock();
@@ -131,29 +211,29 @@ void FallTetrimino(Tetrimino &tetrimino, int buffer[41][11], int delta, int &pre
 		if(check)
 			for(int i=0;i<4;i++)
 				tetrimino.mino[i].y--;
-		else lock = 0;
+		//else lock = 0;
 	}
 }
 void RefreshScreen(int buffer[41][11], int prevbuffer[41][11], Tetrimino tetrimino, Tetrimino prevtetrimino){
-	for(int i=1;i<=40;i++){
+	for(int i=1;i<=22;i++){
 		for(int j=1;j<=10;j++){
 			if(buffer[i][j] != prevbuffer[i][j]){
 				if(buffer[i][j] == 0)
-					WriteConsoleOutputCharacter(h, ". ", 2, {j*CELL_WIDTH, DISPLAY_HEIGHT-i}, &extra);
+					WriteConsoleOutputCharacter(h, ". ", 2, {j*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-i + PADDING_TOP}, &extra);
 				else if(buffer[i][j] == 1)
-					WriteConsoleOutputCharacter(h, "[]", 2, {j*CELL_WIDTH, DISPLAY_HEIGHT-i}, &extra);
+					WriteConsoleOutputCharacter(h, "[]", 2, {j*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-i + PADDING_TOP}, &extra);
 			}
 			prevbuffer[i][j] = buffer[i][j];
 		}
 	}
 	bool check = 1;
 	for(int k=0;k<4;k++){
-		WriteConsoleOutputCharacter(h, "[]", 2, {tetrimino.mino[k].x*CELL_WIDTH, DISPLAY_HEIGHT-tetrimino.mino[k].y}, &extra);
+		WriteConsoleOutputCharacter(h, "()", 2, {tetrimino.mino[k].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-tetrimino.mino[k].y + PADDING_TOP}, &extra);
 		for(int l=0;l<4;l++)
 			if(prevtetrimino.mino[k].y == tetrimino.mino[l].y && prevtetrimino.mino[k].x == tetrimino.mino[l].x)
 				check = 0;
 		if(check)
-			WriteConsoleOutputCharacter(h, ". ", 2, {prevtetrimino.mino[k].x*CELL_WIDTH, DISPLAY_HEIGHT-prevtetrimino.mino[k].y}, &extra);
+			WriteConsoleOutputCharacter(h, ". ", 2, {prevtetrimino.mino[k].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-prevtetrimino.mino[k].y + PADDING_TOP}, &extra);
 		else check = 1;
 	}
 }
@@ -228,24 +308,143 @@ void DASLeft(Tetrimino &tetrimino, int buffer[41][11], int &DASPrevLeft, int DAS
 }
 bool Shift(Tetrimino &tetrimino, int buffer[41][11], Mino m[4], Mino offset){
 	for(int i=0;i<4;i++){
-		if(buffer[m[i].y+offset.y][m[i].x+offset.x] == 1){
+		if(buffer[m[i].y+offset.y][m[i].x+offset.x]==1 || m[i].y+offset.y<=0 || m[i].x+offset.x<=0 || m[i].x+offset.x>10){
 			return 0;
 		}
 	}
-	cout << "here";
-	for(int i=0;i<4;i++)
-		tetrimino.mino[i] = m[i];
+	for(int i=0;i<4;i++){
+		tetrimino.mino[i].x = m[i].x+offset.x;
+		tetrimino.mino[i].y = m[i].y+offset.y;
+	}
 	return 1;
+}
+void Rotate3x2NRight(Tetrimino &tetrimino, int buffer[41][11], Mino m[4]){
+	     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rE;
+	else if(Shift(tetrimino, buffer, m, {-1,  0})) tetrimino.facing = rE;
+	else if(Shift(tetrimino, buffer, m, {-1,  1})) tetrimino.facing = rE;
+	else if(Shift(tetrimino, buffer, m, { 0, -2})) tetrimino.facing = rE;
+	else if(Shift(tetrimino, buffer, m, {-1, -2})) tetrimino.facing = rE;
+}
+void Rotate3x2ERight(Tetrimino &tetrimino, int buffer[41][11], Mino m[4]){
+	     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rS;
+	else if(Shift(tetrimino, buffer, m, { 1,  0})) tetrimino.facing = rS;
+	else if(Shift(tetrimino, buffer, m, { 1, -1})) tetrimino.facing = rS;
+	else if(Shift(tetrimino, buffer, m, { 0,  2})) tetrimino.facing = rS;
+	else if(Shift(tetrimino, buffer, m, { 1,  2})) tetrimino.facing = rS;
+}
+void Rotate3x2SRight(Tetrimino &tetrimino, int buffer[41][11], Mino m[4]){
+	     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rW;
+	else if(Shift(tetrimino, buffer, m, { 1,  0})) tetrimino.facing = rW;
+	else if(Shift(tetrimino, buffer, m, { 1,  1})) tetrimino.facing = rW;
+	else if(Shift(tetrimino, buffer, m, { 0, -2})) tetrimino.facing = rW;
+	else if(Shift(tetrimino, buffer, m, { 1, -2})) tetrimino.facing = rW;
+}
+void Rotate3x2WRight(Tetrimino &tetrimino, int buffer[41][11], Mino m[4]){
+	     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rN;
+	else if(Shift(tetrimino, buffer, m, {-1,  0})) tetrimino.facing = rN;
+	else if(Shift(tetrimino, buffer, m, {-1, -1})) tetrimino.facing = rN;
+	else if(Shift(tetrimino, buffer, m, { 0,  2})) tetrimino.facing = rN;
+	else if(Shift(tetrimino, buffer, m, {-1,  2})) tetrimino.facing = rN;
+}
+/////////////////////////////////////////////////////
+void Rotate3x2NLeft(Tetrimino &tetrimino, int buffer[41][11], Mino m[4]){
+	     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rW;
+	else if(Shift(tetrimino, buffer, m, { 1,  0})) tetrimino.facing = rW;
+	else if(Shift(tetrimino, buffer, m, { 1,  1})) tetrimino.facing = rW;
+	else if(Shift(tetrimino, buffer, m, { 0, -2})) tetrimino.facing = rW;
+	else if(Shift(tetrimino, buffer, m, { 1, -2})) tetrimino.facing = rW;
+}
+void Rotate3x2ELeft(Tetrimino &tetrimino, int buffer[41][11], Mino m[4]){
+	     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rN;
+	else if(Shift(tetrimino, buffer, m, { 1,  0})) tetrimino.facing = rN;
+	else if(Shift(tetrimino, buffer, m, { 1, -1})) tetrimino.facing = rN;
+	else if(Shift(tetrimino, buffer, m, { 0,  2})) tetrimino.facing = rN;
+	else if(Shift(tetrimino, buffer, m, { 1,  2})) tetrimino.facing = rN;
+}
+void Rotate3x2SLeft(Tetrimino &tetrimino, int buffer[41][11], Mino m[4]){
+	     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rE;
+	else if(Shift(tetrimino, buffer, m, {-1,  0})) tetrimino.facing = rE;
+	else if(Shift(tetrimino, buffer, m, {-1,  1})) tetrimino.facing = rE;
+	else if(Shift(tetrimino, buffer, m, { 0, -2})) tetrimino.facing = rE;
+	else if(Shift(tetrimino, buffer, m, {-1, -2})) tetrimino.facing = rE;
+}
+void Rotate3x2WLeft(Tetrimino &tetrimino, int buffer[41][11], Mino m[4]){
+	     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rS;
+	else if(Shift(tetrimino, buffer, m, {-1,  0})) tetrimino.facing = rS;
+	else if(Shift(tetrimino, buffer, m, {-1, -1})) tetrimino.facing = rS;
+	else if(Shift(tetrimino, buffer, m, { 0,  2})) tetrimino.facing = rS;
+	else if(Shift(tetrimino, buffer, m, {-1,  2})) tetrimino.facing = rS;
+}
+void RotateTetriminoRight(Tetrimino tetrimino, Mino m[4], int center){
+	for(int i=0;i<4;i++){
+		if(i != center){
+			if(tetrimino.mino[i].x==tetrimino.mino[center].x-1 && tetrimino.mino[i].y==tetrimino.mino[center].y+1){
+				m[i].x = tetrimino.mino[center].x+1; m[i].y = tetrimino.mino[center].y+1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x   && tetrimino.mino[i].y==tetrimino.mino[center].y+1){
+				m[i].x = tetrimino.mino[center].x+1; m[i].y = tetrimino.mino[center].y;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x+1 && tetrimino.mino[i].y==tetrimino.mino[center].y+1){
+				m[i].x = tetrimino.mino[center].x+1; m[i].y = tetrimino.mino[center].y-1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x+1 && tetrimino.mino[i].y==tetrimino.mino[center].y){
+				m[i].x = tetrimino.mino[center].x  ; m[i].y = tetrimino.mino[center].y-1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x+1 && tetrimino.mino[i].y==tetrimino.mino[center].y-1){
+				m[i].x = tetrimino.mino[center].x-1; m[i].y = tetrimino.mino[center].y-1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x   && tetrimino.mino[i].y==tetrimino.mino[center].y-1){
+				m[i].x = tetrimino.mino[center].x-1; m[i].y = tetrimino.mino[center].y;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x-1 && tetrimino.mino[i].y==tetrimino.mino[center].y-1){
+				m[i].x = tetrimino.mino[center].x-1; m[i].y = tetrimino.mino[center].y+1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x-1 && tetrimino.mino[i].y==tetrimino.mino[center].y){
+				m[i].x = tetrimino.mino[center].x  ; m[i].y = tetrimino.mino[center].y+1;
+			}
+		}
+		else m[center] = tetrimino.mino[center];
+	}
+}
+void RotateTetriminoLeft(Tetrimino tetrimino, Mino m[4], int center){
+	for(int i=0;i<4;i++){
+		if(i != center){
+			if(tetrimino.mino[i].x==tetrimino.mino[center].x-1 && tetrimino.mino[i].y==tetrimino.mino[center].y+1){
+				m[i].x = tetrimino.mino[center].x-1; m[i].y = tetrimino.mino[center].y-1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x-1 && tetrimino.mino[i].y==tetrimino.mino[center].y){
+				m[i].x = tetrimino.mino[center].x  ; m[i].y = tetrimino.mino[center].y-1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x-1 && tetrimino.mino[i].y==tetrimino.mino[center].y-1){
+				m[i].x = tetrimino.mino[center].x+1; m[i].y = tetrimino.mino[center].y-1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x   && tetrimino.mino[i].y==tetrimino.mino[center].y-1){
+				m[i].x = tetrimino.mino[center].x+1; m[i].y = tetrimino.mino[center].y;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x+1 && tetrimino.mino[i].y==tetrimino.mino[center].y-1){
+				m[i].x = tetrimino.mino[center].x+1; m[i].y = tetrimino.mino[center].y+1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x+1 && tetrimino.mino[i].y==tetrimino.mino[center].y){
+				m[i].x = tetrimino.mino[center].x; m[i].y = tetrimino.mino[center].y+1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x+1 && tetrimino.mino[i].y==tetrimino.mino[center].y+1){
+				m[i].x = tetrimino.mino[center].x-1; m[i].y = tetrimino.mino[center].y+1;
+			}
+			else if(tetrimino.mino[i].x==tetrimino.mino[center].x && tetrimino.mino[i].y==tetrimino.mino[center].y+1){
+				m[i].x = tetrimino.mino[center].x-1; m[i].y = tetrimino.mino[center].y;
+			}
+		}
+		else m[center] = tetrimino.mino[center];
+	}
 }
 void RotateRight(Tetrimino &tetrimino, int buffer[41][11]){
 	Mino m[4];
-	if(tetrimino.type = I){
+	if(tetrimino.type == I){
 		if(tetrimino.facing == rN){
-			m[0].x = tetrimino.mino[0].x+1; m[0].y = tetrimino.mino[0].y+1;
+			m[0].x = tetrimino.mino[0].x+2; m[0].y = tetrimino.mino[0].y+1;
 			m[1].x = tetrimino.mino[1].x+1; m[1].y = tetrimino.mino[1].y;
-			m[2].x = tetrimino.mino[2].x+1; m[2].y = tetrimino.mino[2].y-1;
-			m[3].x = tetrimino.mino[3].x+1; m[3].y = tetrimino.mino[3].y-2;
-            //cout << "here";
+			m[2].x = tetrimino.mino[2].x  ; m[2].y = tetrimino.mino[2].y-1;
+			m[3].x = tetrimino.mino[3].x-1; m[3].y = tetrimino.mino[3].y-2;
 			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rE;
 			else if(Shift(tetrimino, buffer, m, {-2,  0})) tetrimino.facing = rE;
 			else if(Shift(tetrimino, buffer, m, { 1,  0})) tetrimino.facing = rE;
@@ -253,10 +452,10 @@ void RotateRight(Tetrimino &tetrimino, int buffer[41][11]){
 			else if(Shift(tetrimino, buffer, m, { 1,  2})) tetrimino.facing = rE;
 		}
 		else if(tetrimino.facing == rE){
-			m[0].x = tetrimino.mino[0].x-2; m[0].y = tetrimino.mino[0].y-2;
-			m[1].x = tetrimino.mino[1].x-1; m[1].y = tetrimino.mino[1].y-1;
-			m[2].x = tetrimino.mino[2].x  ; m[2].y = tetrimino.mino[2].y;
-			m[3].x = tetrimino.mino[3].x+1; m[3].y = tetrimino.mino[3].y+1;
+			m[0].x = tetrimino.mino[0].x+1; m[0].y = tetrimino.mino[0].y-2;
+			m[1].x = tetrimino.mino[1].x  ; m[1].y = tetrimino.mino[1].y-1;
+			m[2].x = tetrimino.mino[2].x-1; m[2].y = tetrimino.mino[2].y;
+			m[3].x = tetrimino.mino[3].x-2; m[3].y = tetrimino.mino[3].y+1;
 			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rS;
 			else if(Shift(tetrimino, buffer, m, {-1,  0})) tetrimino.facing = rS;
 			else if(Shift(tetrimino, buffer, m, { 2,  0})) tetrimino.facing = rS;
@@ -264,10 +463,10 @@ void RotateRight(Tetrimino &tetrimino, int buffer[41][11]){
 			else if(Shift(tetrimino, buffer, m, { 2, -1})) tetrimino.facing = rS;
 		}
 		else if(tetrimino.facing == rS){
-			m[0].x = tetrimino.mino[0].x+1; m[0].y = tetrimino.mino[0].y+2;
-			m[1].x = tetrimino.mino[1].x  ; m[1].y = tetrimino.mino[1].y+1;
-			m[2].x = tetrimino.mino[2].x-1; m[2].y = tetrimino.mino[2].y;
-			m[3].x = tetrimino.mino[3].x-2; m[3].y = tetrimino.mino[3].y-1;
+			m[0].x = tetrimino.mino[0].x-2; m[0].y = tetrimino.mino[0].y-1;
+			m[1].x = tetrimino.mino[1].x-1; m[1].y = tetrimino.mino[1].y;
+			m[2].x = tetrimino.mino[2].x  ; m[2].y = tetrimino.mino[2].y+1;
+			m[3].x = tetrimino.mino[3].x+1; m[3].y = tetrimino.mino[3].y+2;
 			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rW;
 			else if(Shift(tetrimino, buffer, m, { 2,  0})) tetrimino.facing = rW;
 			else if(Shift(tetrimino, buffer, m, {-1,  0})) tetrimino.facing = rW;
@@ -275,16 +474,113 @@ void RotateRight(Tetrimino &tetrimino, int buffer[41][11]){
 			else if(Shift(tetrimino, buffer, m, {-1, -2})) tetrimino.facing = rW;
 		}
 		else if(tetrimino.facing == rW){
-			m[0].x = tetrimino.mino[0].x-1; m[0].y = tetrimino.mino[0].y-1;
-			m[1].x = tetrimino.mino[1].x  ; m[1].y = tetrimino.mino[1].y;
-			m[2].x = tetrimino.mino[2].x+1; m[2].y = tetrimino.mino[2].y+1;
-			m[3].x = tetrimino.mino[3].x+2; m[3].y = tetrimino.mino[3].y+2;
+			m[0].x = tetrimino.mino[0].x-1; m[0].y = tetrimino.mino[0].y+2;
+			m[1].x = tetrimino.mino[1].x  ; m[1].y = tetrimino.mino[1].y+1;
+			m[2].x = tetrimino.mino[2].x+1; m[2].y = tetrimino.mino[2].y;
+			m[3].x = tetrimino.mino[3].x+2; m[3].y = tetrimino.mino[3].y-1;
 			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rN;
 			else if(Shift(tetrimino, buffer, m, { 1,  0})) tetrimino.facing = rN;
 			else if(Shift(tetrimino, buffer, m, {-2,  0})) tetrimino.facing = rN;
 			else if(Shift(tetrimino, buffer, m, { 1, -2})) tetrimino.facing = rN;
 			else if(Shift(tetrimino, buffer, m, {-2,  1})) tetrimino.facing = rN;
 		}
+	}
+	else if(tetrimino.type == T || tetrimino.type == L || tetrimino.type == J || tetrimino.type == Z){
+		RotateTetriminoRight(tetrimino, m, 2);
+		     if(tetrimino.facing == rN) Rotate3x2NRight(tetrimino, buffer, m);
+		else if(tetrimino.facing == rE) Rotate3x2ERight(tetrimino, buffer, m);
+		else if(tetrimino.facing == rS) Rotate3x2SRight(tetrimino, buffer, m);
+		else if(tetrimino.facing == rW) Rotate3x2WRight(tetrimino, buffer, m);
+	}
+	else if(tetrimino.type == S){
+		RotateTetriminoRight(tetrimino, m, 3);
+		     if(tetrimino.facing == rN) Rotate3x2NRight(tetrimino, buffer, m);
+		else if(tetrimino.facing == rE) Rotate3x2ERight(tetrimino, buffer, m);
+		else if(tetrimino.facing == rS) Rotate3x2SRight(tetrimino, buffer, m);
+		else if(tetrimino.facing == rW) Rotate3x2WRight(tetrimino, buffer, m);
+	}
+}
+void RotateLeft(Tetrimino &tetrimino, int buffer[41][11]){
+	Mino m[4];
+	if(tetrimino.type == I){
+		if(tetrimino.facing == rN){
+			m[0].x = tetrimino.mino[0].x+1; m[0].y = tetrimino.mino[0].y-2;
+			m[1].x = tetrimino.mino[1].x  ; m[1].y = tetrimino.mino[1].y-1;
+			m[2].x = tetrimino.mino[2].x-1; m[2].y = tetrimino.mino[2].y;
+			m[3].x = tetrimino.mino[3].x-2; m[3].y = tetrimino.mino[3].y+1;
+			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rW;
+			else if(Shift(tetrimino, buffer, m, {-1,  0})) tetrimino.facing = rW;
+			else if(Shift(tetrimino, buffer, m, { 2,  0})) tetrimino.facing = rW;
+			else if(Shift(tetrimino, buffer, m, {-1,  2})) tetrimino.facing = rW;
+			else if(Shift(tetrimino, buffer, m, { 2, -1})) tetrimino.facing = rW;
+		}
+		else if(tetrimino.facing == rW){
+			m[0].x = tetrimino.mino[0].x+2; m[0].y = tetrimino.mino[0].y+1;
+			m[1].x = tetrimino.mino[1].x+1; m[1].y = tetrimino.mino[1].y;
+			m[2].x = tetrimino.mino[2].x  ; m[2].y = tetrimino.mino[2].y-1;
+			m[3].x = tetrimino.mino[3].x-1; m[3].y = tetrimino.mino[3].y-2;
+			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rS;
+			else if(Shift(tetrimino, buffer, m, {-2,  0})) tetrimino.facing = rS;
+			else if(Shift(tetrimino, buffer, m, { 1,  0})) tetrimino.facing = rS;
+			else if(Shift(tetrimino, buffer, m, {-2, -1})) tetrimino.facing = rS;
+			else if(Shift(tetrimino, buffer, m, { 1,  2})) tetrimino.facing = rS;
+		}
+		else if(tetrimino.facing == rS){
+			m[0].x = tetrimino.mino[0].x-1; m[0].y = tetrimino.mino[0].y+2;
+			m[1].x = tetrimino.mino[1].x  ; m[1].y = tetrimino.mino[1].y+1;
+			m[2].x = tetrimino.mino[2].x+1; m[2].y = tetrimino.mino[2].y;
+			m[3].x = tetrimino.mino[3].x+2; m[3].y = tetrimino.mino[3].y-1;
+			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rE;
+			else if(Shift(tetrimino, buffer, m, { 1,  0})) tetrimino.facing = rE;
+			else if(Shift(tetrimino, buffer, m, {-2,  0})) tetrimino.facing = rE;
+			else if(Shift(tetrimino, buffer, m, { 1, -2})) tetrimino.facing = rE;
+			else if(Shift(tetrimino, buffer, m, {-2,  1})) tetrimino.facing = rE;
+		}
+		else if(tetrimino.facing == rE){
+			m[0].x = tetrimino.mino[0].x-2; m[0].y = tetrimino.mino[0].y-1;
+			m[1].x = tetrimino.mino[1].x-1; m[1].y = tetrimino.mino[1].y;
+			m[2].x = tetrimino.mino[2].x  ; m[2].y = tetrimino.mino[2].y+1;
+			m[3].x = tetrimino.mino[3].x+1; m[3].y = tetrimino.mino[3].y+2;
+			     if(Shift(tetrimino, buffer, m, { 0,  0})) tetrimino.facing = rN;
+			else if(Shift(tetrimino, buffer, m, { 2,  0})) tetrimino.facing = rN;
+			else if(Shift(tetrimino, buffer, m, {-1,  0})) tetrimino.facing = rN;
+			else if(Shift(tetrimino, buffer, m, { 2,  1})) tetrimino.facing = rN;
+			else if(Shift(tetrimino, buffer, m, {-1, -2})) tetrimino.facing = rN;
+		}
+	}
+	else if(tetrimino.type == T || tetrimino.type == L || tetrimino.type == J || tetrimino.type == Z){
+		RotateTetriminoLeft(tetrimino, m, 2);
+		     if(tetrimino.facing == rN) Rotate3x2NLeft(tetrimino, buffer, m);
+		else if(tetrimino.facing == rE) Rotate3x2ELeft(tetrimino, buffer, m);
+		else if(tetrimino.facing == rS) Rotate3x2SLeft(tetrimino, buffer, m);
+		else if(tetrimino.facing == rW) Rotate3x2WLeft(tetrimino, buffer, m);
+	}
+	else if(tetrimino.type == S){
+		RotateTetriminoLeft(tetrimino, m, 3);
+		     if(tetrimino.facing == rN) Rotate3x2NLeft(tetrimino, buffer, m);
+		else if(tetrimino.facing == rE) Rotate3x2ELeft(tetrimino, buffer, m);
+		else if(tetrimino.facing == rS) Rotate3x2SLeft(tetrimino, buffer, m);
+		else if(tetrimino.facing == rW) Rotate3x2WLeft(tetrimino, buffer, m);
+	}
+}
+int LineClear(int buffer[41][11]){
+	int check = 1;
+	for(int i=1;i<=40;i++){
+		for(int j=1;j<=10;j++){
+			if(buffer[i][j] == 0) check = 0;
+		}
+		if(check){
+			for(int k=0;k<=10;k++){
+				buffer[i][k] = 0;
+			}
+			for(int k=i;k<=40;k++){
+				for(int j=1;j<=10;j++){
+					buffer[k][j] = buffer[k+1][j];
+				}
+			}
+			i--;
+		}
+		check = 1;
 	}
 }
 //Main function
@@ -303,27 +599,35 @@ int main(int argc, char ** argv){
 	while(lose){
 		lock = 1;
 		GenerateBag(nextQueue);
-		GenerateTetrimino(tetrimino, nextQueue);
-
-		// ch = getch();
-		// if(ch == 'f') break;
+		GenerateTetrimino(tetrimino, nextQueue, holdQueue);
+		DisplayNextQueue(nextQueue);
+		DisplayHoldQueue(holdQueue);
+		FallTetrimino(tetrimino, buffer, delta, prev, lock);
 		while(lock){
 			prevtetrimino = tetrimino;
 			FallTetrimino(tetrimino, buffer, delta, prev, lock);
 			if(kbhit()){
-					ch = getch();
-					if(ch == ' ')
-						Harddrop(tetrimino, buffer, lock);
-					else if(ch == 'd')
-						Softdrop(tetrimino, buffer, lock);
-					else if(ch == 'f')
-						MoveRight(tetrimino, buffer);
-					else if(ch == 's')
-						MoveLeft(tetrimino, buffer);
-					else if(ch == 'k')
-						RotateRight(tetrimino, buffer);
-					// RotateTetrimino();
-					//NOTE: Might use GetAsyncKeyState only for das, and getch for anything else
+				if(ch == 'e') hold_check = 0;
+				else hold_check = 1;
+				ch = getch();
+				if(ch == ' ')
+					Harddrop(tetrimino, buffer, lock);
+				else if(ch == 'd')
+					Softdrop(tetrimino, buffer, lock);
+				else if(ch == 'f')
+					MoveRight(tetrimino, buffer);
+				else if(ch == 's')
+					MoveLeft(tetrimino, buffer);
+				else if(ch == 'k')
+					RotateRight(tetrimino, buffer);
+				else if(ch == 'j')
+					RotateLeft(tetrimino, buffer);
+				else if(ch == 'e' && hold_check){
+					GenerateTetrimino(tetrimino, nextQueue, holdQueue, USING_HOLD);
+					DisplayNextQueue(nextQueue);
+					DisplayHoldQueue(holdQueue);
+					hold_check = 0;
+				}
 			}
 			DASRight(tetrimino, buffer, DASPrevRight, DASdelta);
 			DASLeft(tetrimino, buffer, DASPrevLeft, DASdelta);
@@ -331,6 +635,12 @@ int main(int argc, char ** argv){
 		}
 		for(int i=0;i<4;i++){
 			buffer[tetrimino.mino[i].y][tetrimino.mino[i].x] = 1;
+		}
+		LineClear(buffer);
+		for(int i=0;i<4;i++){
+			if(buffer[tetrimino.mino[i].y][tetrimino.mino[i].x] == 0){
+				WriteConsoleOutputCharacter(h, ". ", 2, {tetrimino.mino[i].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-tetrimino.mino[i].y + PADDING_TOP}, &extra);
+			}
 		}
 	}
 	return 0;
