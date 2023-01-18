@@ -12,7 +12,6 @@
 using namespace std;
 
 //Constants
-char MINO_TEXTURE[] = "[]";
 int CELL_WIDTH = 2;
 int O = 1,
     I = 2,
@@ -29,6 +28,10 @@ int rN = 0,
     rS = 2,
     rW = 3;
 int USING_HOLD = 1;
+char MINO_TEXTURE[2];
+char GHOST_TEXTURE[2];
+char TETRIMINO_TEXTURE[2];
+char EMPTY_TEXTURE[2];
 //Required variables
 HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
 DWORD extra;
@@ -41,7 +44,7 @@ struct Tetrimino{
 	int type;
 	Mino mino[4];
 	int facing;
-}tetrimino, prevtetrimino;
+}tetrimino, prevtetrimino, ghosttetrimino, prevghosttetrimino;
 int nextQueue[100];
 int holdQueue;
 int lose, lock;
@@ -214,27 +217,37 @@ void FallTetrimino(Tetrimino &tetrimino, int buffer[41][11], int delta, int &pre
 		//else lock = 0;
 	}
 }
-void RefreshScreen(int buffer[41][11], int prevbuffer[41][11], Tetrimino tetrimino, Tetrimino prevtetrimino){
+void RefreshScreen(int buffer[41][11], int prevbuffer[41][11], Tetrimino tetrimino, Tetrimino prevtetrimino, Tetrimino ghosttetrimino, Tetrimino prevghosttetrimino){
 	for(int i=1;i<=22;i++){
 		for(int j=1;j<=10;j++){
 			if(buffer[i][j] != prevbuffer[i][j]){
 				if(buffer[i][j] == 0)
-					WriteConsoleOutputCharacter(h, ". ", 2, {j*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-i + PADDING_TOP}, &extra);
+					WriteConsoleOutputCharacter(h, EMPTY_TEXTURE, 2, {j*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-i + PADDING_TOP}, &extra);
 				else if(buffer[i][j] == 1)
-					WriteConsoleOutputCharacter(h, "[]", 2, {j*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-i + PADDING_TOP}, &extra);
+					WriteConsoleOutputCharacter(h, MINO_TEXTURE, 2, {j*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-i + PADDING_TOP}, &extra);
 			}
 			prevbuffer[i][j] = buffer[i][j];
 		}
 	}
 	bool check = 1;
+	bool ghostcheck = 1;
 	for(int k=0;k<4;k++){
-		WriteConsoleOutputCharacter(h, "()", 2, {tetrimino.mino[k].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-tetrimino.mino[k].y + PADDING_TOP}, &extra);
+		WriteConsoleOutputCharacter(h, TETRIMINO_TEXTURE, 2, {tetrimino.mino[k].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-tetrimino.mino[k].y + PADDING_TOP}, &extra);
 		for(int l=0;l<4;l++)
 			if(prevtetrimino.mino[k].y == tetrimino.mino[l].y && prevtetrimino.mino[k].x == tetrimino.mino[l].x)
 				check = 0;
 		if(check)
-			WriteConsoleOutputCharacter(h, ". ", 2, {prevtetrimino.mino[k].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-prevtetrimino.mino[k].y + PADDING_TOP}, &extra);
+			WriteConsoleOutputCharacter(h, EMPTY_TEXTURE, 2, {prevtetrimino.mino[k].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-prevtetrimino.mino[k].y + PADDING_TOP}, &extra);
 		else check = 1;
+
+		if(tetrimino.mino[k].y != ghosttetrimino.mino[k].y && prevtetrimino.mino[k].y != ghosttetrimino.mino[k].y)
+			WriteConsoleOutputCharacter(h, GHOST_TEXTURE, 2, {ghosttetrimino.mino[k].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-ghosttetrimino.mino[k].y + PADDING_TOP}, &extra);
+		for(int l=0;l<4;l++)
+			if(prevghosttetrimino.mino[k].y == ghosttetrimino.mino[l].y && prevghosttetrimino.mino[k].x == ghosttetrimino.mino[l].x)
+				ghostcheck = 0;
+		if(ghostcheck)
+			WriteConsoleOutputCharacter(h, EMPTY_TEXTURE, 2, {prevghosttetrimino.mino[k].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-prevghosttetrimino.mino[k].y + PADDING_TOP}, &extra);
+		else ghostcheck = 1;
 	}
 }
 void Harddrop(Tetrimino &tetrimino, int buffer[41][11], int &lock){
@@ -585,6 +598,14 @@ int LineClear(int buffer[41][11]){
 }
 //Main function
 int main(int argc, char ** argv){
+	// MINO_TEXTURE[0] = (char)219; MINO_TEXTURE[1] = (char)219;
+	// GHOST_TEXTURE[0] = (char)177; GHOST_TEXTURE[1] = (char)177;
+	// TETRIMINO_TEXTURE[0] = (char)178; TETRIMINO_TEXTURE[1] = (char)178;
+	// EMPTY_TEXTURE[0] = (char)32; EMPTY_TEXTURE[1] = (char)32;	
+	EMPTY_TEXTURE[0] = '.'; EMPTY_TEXTURE[1] = ' ';
+	MINO_TEXTURE[0] = '['; MINO_TEXTURE[1] = ']';
+	GHOST_TEXTURE[0] = '('; GHOST_TEXTURE[1] = ')';
+	TETRIMINO_TEXTURE[0] = '{'; TETRIMINO_TEXTURE[1] = '}';
 	prevtetrimino = tetrimino;
 	srand(time(NULL)); //for set seed
 	for(int i=40;i>=1;i--){
@@ -631,7 +652,31 @@ int main(int argc, char ** argv){
 			}
 			DASRight(tetrimino, buffer, DASPrevRight, DASdelta);
 			DASLeft(tetrimino, buffer, DASPrevLeft, DASdelta);
-			RefreshScreen(buffer, prevbuffer, tetrimino, prevtetrimino);
+			ghosttetrimino = tetrimino;
+			prevghosttetrimino = prevtetrimino;
+			int ghostcheck = 1;
+			int prevghostcheck = 1;
+			while(ghostcheck || prevghostcheck){
+				for(int i=0;i<4;i++){
+					if(buffer[ghosttetrimino.mino[i].y-1][ghosttetrimino.mino[i].x] == 1 || ghosttetrimino.mino[i].y-1 == 0)
+						ghostcheck = 0;
+				}
+				for(int i=0;i<4;i++){
+					if(buffer[prevghosttetrimino.mino[i].y-1][prevghosttetrimino.mino[i].x] == 1 || prevghosttetrimino.mino[i].y-1 == 0)
+						prevghostcheck = 0;
+				}
+				if(ghostcheck){
+					for(int i=0;i<4;i++){
+						ghosttetrimino.mino[i].y--;
+					}
+				}
+				if(prevghostcheck){
+					for(int i=0;i<4;i++){
+						prevghosttetrimino.mino[i].y--;
+					}
+				}
+			}
+			RefreshScreen(buffer, prevbuffer, tetrimino, prevtetrimino, ghosttetrimino, prevghosttetrimino);
 		}
 		for(int i=0;i<4;i++){
 			buffer[tetrimino.mino[i].y][tetrimino.mino[i].x] = 1;
@@ -639,7 +684,7 @@ int main(int argc, char ** argv){
 		LineClear(buffer);
 		for(int i=0;i<4;i++){
 			if(buffer[tetrimino.mino[i].y][tetrimino.mino[i].x] == 0){
-				WriteConsoleOutputCharacter(h, ". ", 2, {tetrimino.mino[i].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-tetrimino.mino[i].y + PADDING_TOP}, &extra);
+				WriteConsoleOutputCharacter(h, EMPTY_TEXTURE, 2, {tetrimino.mino[i].x*CELL_WIDTH + PADDING_LEFT, DISPLAY_HEIGHT-tetrimino.mino[i].y + PADDING_TOP}, &extra);
 			}
 		}
 	}
